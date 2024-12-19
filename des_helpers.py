@@ -219,6 +219,19 @@ key_comp = [14, 17, 11, 24, 1, 5,
 			46, 42, 50, 36, 29, 32]
 
 def preprocess_key(key):
+	"""
+	DES algorithm
+
+	Params
+	------
+	key : str
+		Uppercase hex string
+
+	Returns
+	-------
+	rkb : list[str]
+		List of binary strings. A preprocessed DES key used by des function.
+	"""
 	key = hex2bin(key)
 
 	# getting 56 bit key from 64 bit using the parity bits
@@ -245,6 +258,23 @@ def preprocess_key(key):
 	return rkb
 
 def des(pt, rkb):
+	"""
+	DES algorithm
+
+	Params
+	------
+	pt : str
+		Uppercase hex string
+	rkb : list[str]
+		List of binary strings. A preprocessed DES key.
+
+	Returns
+	-------
+	text : str
+		Output text
+	sbox_outs : dict{dict{int}}
+		S-Box output for each round. E.x. sbox_outs[Round # (0-15)][S-Box # (0-7)] so sbox_outs[0][0] will give you the output of the first S-box in the first round 
+	"""
 	sbox_outs = {}
 	pt = hex2bin(pt)
 
@@ -298,12 +328,40 @@ def des(pt, rkb):
 	return cipher_text, sbox_outs
 
 def encrypt(plaintext, key):
+	"""
+	Encrypt function for DES
+
+	Params
+	------
+	plaintext : str
+		Uppercase hex string
+	key : str
+		Uppercase hex string
+
+	Returns
+	-------
+	ciphertext : str
+	"""
 	rkb = preprocess_key(key)
 	text, _ = des(plaintext, rkb)
 	
 	return text
 
 def decrypt(ciphertext, key):
+	"""
+	Decrypt function for DES
+
+	Params
+	------
+	ciphertext : str
+		Uppercase hex string
+	key : str
+		Uppercase hex string
+
+	Returns
+	-------
+	plaintext : str
+	"""
 	rkb = preprocess_key(key)
 	rkb_rev = rkb[::-1]
 	text, _ = des(ciphertext, rkb_rev)
@@ -311,8 +369,25 @@ def decrypt(ciphertext, key):
 	return text
 
 def dpa_select_function(ct, key):
+	"""
+	Select function for DPA analysis
+
+	Params
+	------
+	ct : str
+		Uppercase hex string
+	key : str
+		Uppercase hex string between 0 and 63
+
+	Returns
+	-------
+	V : int 
+		Most significant bit from sbox output 
+	"""
 	ct = hex2bin(ct)
 
+	# This is garbage but will work for keys between 0 to 63
+	# Format key into 6 bits
 	key = dec2bin(key)
 	if len(key) <= 4:
 		key = "0000" + key
@@ -338,4 +413,3 @@ def dpa_select_function(ct, key):
 	val = dec2bin(val)
 
 	return int(val[0])
-
