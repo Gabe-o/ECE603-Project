@@ -129,6 +129,7 @@ static uint8_t const sbox_inverse[256] PROGMEM = {
 AESCommon::AESCommon()
     : rounds(0), schedule(0)
 {
+    pinMode(2, OUTPUT);
 }
 
 /**
