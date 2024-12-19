@@ -336,14 +336,16 @@ void DES::encrypt(void* out, const void* in, const void* key){
         } data;
         
         permute((uint8_t*)ip_permtab, (uint8_t*)in, data.v8);
-        digitalWrite(2, HIGH);
-        digitalWrite(2, LOW);
         permute((uint8_t*)pc1_permtab, (const uint8_t*)key, k);
         for(i=0; i<8; ++i){
                 shiftkey(k);
                 if(ROTTABLE&((1<<((i<<1)+0))) )
                         shiftkey(k);
                 permute((uint8_t*)pc2_permtab, k, kr);
+                if(i == 0){
+                        digitalWrite(2, HIGH);
+                        digitalWrite(2, LOW);
+                }
                 L ^= des_f(R, kr);
                 
                 shiftkey(k);
