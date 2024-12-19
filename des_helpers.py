@@ -369,6 +369,9 @@ def decrypt(ciphertext, key):
 	return text
 
 def dpa_select_function(ct, key):
+    return int(select_function(ct, key)[0])
+
+def select_function(ct, key):
 	"""
 	Select function for DPA analysis
 
@@ -412,4 +415,4 @@ def dpa_select_function(ct, key):
 	val = sbox[0][row][col]
 	val = dec2bin(val)
 
-	return int(val[0])
+	return val

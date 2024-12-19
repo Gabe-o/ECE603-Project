@@ -4,6 +4,12 @@
 from typing import List
 from itertools import combinations
 import numpy as np
+from aes_functions import aes_sub_bytes 
+
+from des_helpers import permute
+import random
+
+random.seed = 0
 
 DES_Sboxes:List[List[List[int]]] = [
     [
@@ -56,69 +62,75 @@ DES_Sboxes:List[List[List[int]]] = [
     ]
 ]
 
-def compute_confusion_coefficients_DES(sbox, attack_type='DPA'):
-    """
-    Compute confusion coefficients using Pearson correlation for DPA or CPA.
 
-    Parameters:
-    - sbox: The S-box to analyze.
-    - attack_type: 'DPA' or 'CPA'.
 
-    Returns:
-    - List of confusion coefficients.
-    """
+# This function computes the confusion coefficients for DES.
+def compute_confusion_coefficients(sbox, attack_type='DPA', algorithm='DES'):
     coefficients = []
-    cpa_arrays = []
-    key_pairs = list(combinations(range(64), 2))  # All unique key pairs
-    V = []
+    # num_keys = 2**6 if algorithm == 'DES' else 2**64
+    key_pairs = []# All unique key pairs
+    if algorithm == 'DES':
+        key_pairs = list(combinations(range(2**6), 2))
+    else:
+        keys = generate_n_random_strings(2**6)
+        key_pairs = list(combinations(keys, 2))
+
+    inputs = range(64) if algorithm == 'DES' else generate_n_random_strings(2**8)
+    print("[compute_confusion_coefficients] Setup complete!")
     
     for ki, kj in key_pairs:
         if ki == kj:
             continue
-
-        vi_list = []
-        vj_list = []
+        # Conditional
+        selection_function = get_first_bit if attack_type == "DPA" else hamming_weight
+        permutation_function = (lambda val: des_sbox_output(val, sbox)) if algorithm == 'DES' else aes_sub_bytes
         
-        sum_diff_squared = 0
-        for input_val in range(64):
-            vi = des_sbox_output(format(input_val ^ ki, '06b'), sbox)
-            vj = des_sbox_output(format(input_val ^ kj, '06b'), sbox)
-            V.append(int(vi))
-            V.append(int(vj, 2))
-            
-            if attack_type == 'DPA':
-                # Use the first bit of the S-box output for DPA
-                diff = int(vi[0], 2) - int(vj[0], 2)
-                sum_diff_squared += diff ** 2
-            elif attack_type == 'CPA':
-                # Use the Hamming weight of the S-box output for CPA
-                vi_list.append(int(vi, 2))
-                vj_list.append(int(vj, 2))
+        kappa = compute_kappa(ki, kj, permutation_function, selection_function, inputs)
 
-        # Convert correlation into confusion coefficient
-        kappa = 0
-        if attack_type == 'DPA':
-            kappa = sum_diff_squared / 64
-            coefficients.append(kappa)
-        elif attack_type == 'CPA':
-            # For the key hypothesis vi and vj
-            vi_array = np.array(vi_list)
-            vj_array = np.array(vj_list)
-
-            denominator = np.var(V) 
-            cpa_arrays.append((vi_array, vj_array))
-    if attack_type == 'CPA':
-        V_mean = np.mean(V)
-        V_var = np.var(V)
-        for ki,kj in cpa_arrays:
-            kappa = (np.mean((ki - V_mean) * (kj - V_mean)) / V_var) if denominator != 0 else 0
-            coefficients.append(kappa)
+        coefficients.append(kappa)
         
     return coefficients
     
+def hamming_weight(bits):
+    return bin(int(bits, 2)).count('1')
+
+def get_first_bit(val:str):
+    return int(val[0], 2)
+
+def get_h_bits(val, h):
+    return int(val[0:h])
+
+
+# Compute the Kappa step for a generic function
+def compute_kappa(ki, kj, permutation_function, selection_function, inputs):
+    diff_squared = []
+    for input_val in inputs:
+        vi = permutation_function(input_val ^ ki) # V|ki
+        vj = permutation_function(input_val ^ kj) # V|kj
+        diff = selection_function(vi) - selection_function(vj)
+        diff_squared.append(diff**2)
+
+    return np.mean(diff_squared) # This is the expected value
 
 # Given some input and an sbox, computes the output bits
-def des_sbox_output(input_bits:str, sbox:List[List[int]]):
-    row = int(input_bits[0] + input_bits[5], 2)
-    col = int(input_bits[1:5], 2)
+def des_sbox_output(input_bits:int, sbox:List[List[int]]):
+    bits = format(input_bits, '06b')
+    row = int(bits[0] + bits[5], 2)
+    col = int(bits[1:5], 2)
     return format(sbox[row][col], '04b') # outputs a binary string
+
+# The AES Sbox is 16x16
+def generate_n_random_strings(n):
+    # randomly selects 2^16 strings...
+    
+    # Randomly select 2^16 unique numbers from the full 64-bit range
+    selected_strings = []
+    for _ in range(n) :
+        selected_bit_string = generate_random_bit_string(64)
+        selected_strings.append(int(selected_bit_string, 2))
+    
+    return selected_strings
+
+def generate_random_bit_string(length):
+    return ''.join(random.choice('01') for _ in range(length))
+    
